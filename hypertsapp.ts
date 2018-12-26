@@ -30,7 +30,7 @@ var defer = !usePromise
     }
 
 var updateProperty = function (
-    element: Element,
+    element: any,
     name: string,
     lastValue: any,
     nextValue: any,
@@ -95,7 +95,7 @@ var updateProperty = function (
     }
 }
 
-var createElement = function (node: VNode, lifecycle: Function[], eventProxy: any, isSvg: boolean | undefined) {
+var createElement = function (node: VNode, lifecycle: Function[], eventProxy: any, isSvg: boolean) {
     var element =
         node.type === TEXT_NODE
             ? document.createTextNode(node.name)
@@ -103,7 +103,7 @@ var createElement = function (node: VNode, lifecycle: Function[], eventProxy: an
                 ? document.createElementNS(SVG_NS, node.name)
                 : document.createElement(node.name)
 
-    var props = node.props
+    var props: any = node.props
     if (props.onCreate) {
         lifecycle.push(function () {
             props.onCreate(element)
@@ -202,13 +202,13 @@ var createKeyMap = function (children: any, start: any, end: any) {
 }
 
 var patchElement = function (
-    parent: Element | Text,
-    element: Element | Text,
+    parent: Element | Text | undefined,
+    element: Element | Text | undefined,
     lastNode: VNode | null,
     nextNode: VNode,
     lifecycle: Function[],
     eventProxy: any,
-    isSvg?: boolean
+    isSvg: boolean
 ) {
     if (nextNode === lastNode) {
     } else if (
@@ -217,12 +217,12 @@ var patchElement = function (
         nextNode.type === TEXT_NODE
     ) {
         if (lastNode.name !== nextNode.name) {
-            element.nodeValue = nextNode.name
+            element!.nodeValue = nextNode.name
         }
     } else if (lastNode == null || lastNode.name !== nextNode.name) {
-        var newElement = parent.insertBefore(
+        var newElement = parent!.insertBefore(
             createElement(nextNode, lifecycle, eventProxy, isSvg),
-            element
+            element!
         )
 
         if (lastNode != null) removeElement(parent, lastNode)
@@ -294,14 +294,14 @@ var patchElement = function (
 
         if (lastChStart > lastChEnd) {
             while (nextChStart <= nextChEnd) {
-                element.insertBefore(
+                element!.insertBefore(
                     createElement(
                         nextChildren[nextChStart++],
                         lifecycle,
                         eventProxy,
                         isSvg
                     ),
-                    (childNode = lastChildren[lastChStart]) && childNode.element
+                    (childNode = lastChildren[lastChStart]) && childNode.element!
                 )
             }
         } else if (nextChStart > nextChEnd) {
@@ -358,9 +358,9 @@ var patchElement = function (
                         if ((savedNode = lastKeyed[nextKey]) != null) {
                             patchElement(
                                 element,
-                                element.insertBefore(
+                                element!.insertBefore(
                                     savedNode.element,
-                                    childNode && childNode.element
+                                    childNode && childNode.element!
                                 ),
                                 savedNode,
                                 nextChildren[nextChStart],
@@ -402,7 +402,7 @@ var patchElement = function (
     return (nextNode.element = element)
 }
 
-var createVNode = function (name: string, props: any, children: any[], element: Element, key: any, type: number): VNode {
+var createVNode = function (name: string, props: any, children: any[], element: Element | undefined, key: any, type: number): VNode {
     return {
         name: name,
         props: props,
@@ -434,7 +434,7 @@ var recycleElement = function (element: Element) {
     )
 }
 
-var patch = function (container: Element, element: Element | Text, lastNode: VNode, nextNode: VNode, eventProxy: any) {
+var patch = function (container: Element, element: Element | Text | undefined, lastNode: VNode, nextNode: VNode, eventProxy: any) {
     var lifecycle: Function[] = []
 
     element = patchElement(
@@ -443,7 +443,8 @@ var patch = function (container: Element, element: Element | Text, lastNode: VNo
         lastNode,
         nextNode,
         lifecycle,
-        eventProxy
+        eventProxy,
+        false
     )
 
     while (lifecycle.length > 0) lifecycle.pop()!()
@@ -479,7 +480,7 @@ export var h = function (name: string | Function, props: any) {
 
     return typeof name === "function"
         ? name(props, (props.children = children))
-        : createVNode(name, props, children, null, props.key, DEFAULT)
+        : createVNode(name, props, children, undefined, props.key, DEFAULT)
 }
 
 var cancel = function (sub: any) {
@@ -542,12 +543,12 @@ var refresh = function (sub: any, oldSub: any, dispatch: any): any {
             : oldSub
 }
 
-export function app(props: { init?: any, view?: any, subscriptions?: any, container: Element }) {
+export function app<S>(props: { init?: S, view?: ((state: S) => VNode), subscriptions?: any, container: Element }) {
     var state: any
     var view = props.view
     var subs = props.subscriptions
     var container = props.container
-    var element: Element | Text = container.children[0]
+    var element: Element | Text | undefined = container.children[0]
     var lastNode = element && recycleElement(element)
     var lastSub: any[] = []
     var updateInProgress = false
@@ -606,16 +607,25 @@ export function app(props: { init?: any, view?: any, subscriptions?: any, contai
 export type Children = VNode | string | number | null
 
 export enum VNodeType {
-  DEFAULT = 0,
-  RECYCLED_NODE,
-  TEXT_NODE,
+    DEFAULT = 0,
+    RECYCLED_NODE,
+    TEXT_NODE,
 }
 
 export interface VNode<Props = {}> {
-  name: string,
-  props: Props,
-  children: Array<VNode>
-  element: Element | Text,
-  key: string,
-  type: VNodeType
+    name: string,
+    props: Props,
+    children: Array<VNode>
+    element: Element | Text | undefined,
+    key: string,
+    type: VNodeType
+}
+
+declare global {
+    namespace JSX {
+        interface Element extends VNode<any> { }
+        interface IntrinsicElements {
+            [elemName: string]: any
+        }
+    }
 }
