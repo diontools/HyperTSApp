@@ -33,7 +33,6 @@ var updateProperty = function (
     name: string,
     lastValue: any,
     nextValue: any,
-    eventProxy: any,
     isSvg: boolean
 ) {
     if (name === "key") {
@@ -47,54 +46,40 @@ var updateProperty = function (
             }
         }
     } else {
-        if (name[0] === "o" && name[1] === "n") {
-            name = name.slice(2).toLowerCase()
+        var nullOrFalse = nextValue == null || nextValue === false
 
-            if (!element.events) element.events = {}
-
-            element.events[name] = nextValue
-
-            if (nextValue == null) {
-                element.removeEventListener(name, eventProxy)
-            } else if (lastValue == null) {
-                element.addEventListener(name, eventProxy)
+        if (
+            name in element &&
+            name !== "list" &&
+            name !== "draggable" &&
+            name !== "spellcheck" &&
+            name !== "translate" &&
+            !isSvg
+        ) {
+            element[name] = nextValue == null ? "" : nextValue
+            if (nullOrFalse) {
+                element.removeAttribute(name)
             }
         } else {
-            var nullOrFalse = nextValue == null || nextValue === false
-
-            if (
-                name in element &&
-                name !== "list" &&
-                name !== "draggable" &&
-                name !== "spellcheck" &&
-                name !== "translate" &&
-                !isSvg
-            ) {
-                element[name] = nextValue == null ? "" : nextValue
+            var ns = isSvg && name !== (name = name.replace(/^xlink:?/, ""))
+            if (ns) {
                 if (nullOrFalse) {
-                    element.removeAttribute(name)
+                    element.removeAttributeNS(XLINK_NS, name)
+                } else {
+                    element.setAttributeNS(XLINK_NS, name, nextValue)
                 }
             } else {
-                var ns = isSvg && name !== (name = name.replace(/^xlink:?/, ""))
-                if (ns) {
-                    if (nullOrFalse) {
-                        element.removeAttributeNS(XLINK_NS, name)
-                    } else {
-                        element.setAttributeNS(XLINK_NS, name, nextValue)
-                    }
+                if (nullOrFalse) {
+                    element.removeAttribute(name)
                 } else {
-                    if (nullOrFalse) {
-                        element.removeAttribute(name)
-                    } else {
-                        element.setAttribute(name, nextValue)
-                    }
+                    element.setAttribute(name, nextValue)
                 }
             }
         }
     }
 }
 
-var createElement = function (node: VNode, lifecycle: Function[], eventProxy: any, isSvg: boolean) {
+var createElement = function (node: VNode, lifecycle: Function[], isSvg: boolean) {
     var element =
         node.type === TEXT_NODE
             ? document.createTextNode(node.name)
@@ -111,12 +96,12 @@ var createElement = function (node: VNode, lifecycle: Function[], eventProxy: an
 
     for (var i = 0, length = node.children.length; i < length; i++) {
         element.appendChild(
-            createElement(node.children[i], lifecycle, eventProxy, isSvg)
+            createElement(node.children[i], lifecycle, isSvg)
         )
     }
 
     for (var name in props) {
-        updateProperty(element, name, null, props[name], eventProxy, isSvg)
+        updateProperty(element, name, null, props[name], isSvg)
     }
 
     return (node.element = element)
@@ -127,7 +112,6 @@ var updateElement = function (
     lastProps: any,
     nextProps: any,
     lifecycle: Function[],
-    eventProxy: any,
     isSvg: any,
     isRecycled: any
 ) {
@@ -142,7 +126,6 @@ var updateElement = function (
                 name,
                 lastProps[name],
                 nextProps[name],
-                eventProxy,
                 isSvg
             )
         }
@@ -206,7 +189,6 @@ var patchElement = function (
     lastNode: VNode | null,
     nextNode: VNode,
     lifecycle: Function[],
-    eventProxy: any,
     isSvg: boolean
 ) {
     if (nextNode === lastNode) {
@@ -220,7 +202,7 @@ var patchElement = function (
         }
     } else if (lastNode == null || lastNode.name !== nextNode.name) {
         var newElement = parent!.insertBefore(
-            createElement(nextNode, lifecycle, eventProxy, isSvg),
+            createElement(nextNode, lifecycle, isSvg),
             element!
         )
 
@@ -233,7 +215,6 @@ var patchElement = function (
             lastNode.props,
             nextNode.props,
             lifecycle,
-            eventProxy,
             (isSvg = isSvg || nextNode.name === "svg"),
             lastNode.type === RECYCLED_NODE
         )
@@ -263,7 +244,6 @@ var patchElement = function (
                 lastChildren[lastChStart],
                 nextChildren[nextChStart],
                 lifecycle,
-                eventProxy,
                 isSvg
             )
 
@@ -283,7 +263,6 @@ var patchElement = function (
                 lastChildren[lastChEnd],
                 nextChildren[nextChEnd],
                 lifecycle,
-                eventProxy,
                 isSvg
             )
 
@@ -297,7 +276,6 @@ var patchElement = function (
                     createElement(
                         nextChildren[nextChStart++],
                         lifecycle,
-                        eventProxy,
                         isSvg
                     ),
                     (childNode = lastChildren[lastChStart]) && childNode.element!
@@ -334,7 +312,6 @@ var patchElement = function (
                             childNode,
                             nextChildren[nextChStart],
                             lifecycle,
-                            eventProxy,
                             isSvg
                         )
                         nextChStart++
@@ -348,7 +325,6 @@ var patchElement = function (
                             childNode,
                             nextChildren[nextChStart],
                             lifecycle,
-                            eventProxy,
                             isSvg
                         )
                         nextKeyed[nextKey] = true
@@ -364,7 +340,6 @@ var patchElement = function (
                                 savedNode,
                                 nextChildren[nextChStart],
                                 lifecycle,
-                                eventProxy,
                                 isSvg
                             )
                             nextKeyed[nextKey] = true
@@ -375,7 +350,6 @@ var patchElement = function (
                                 null,
                                 nextChildren[nextChStart],
                                 lifecycle,
-                                eventProxy,
                                 isSvg
                             )
                         }
@@ -433,7 +407,7 @@ var recycleElement = function (element: Element) {
     )
 }
 
-var patch = function (container: Element, element: Element | Text | undefined, lastNode: VNode, nextNode: VNode, eventProxy: any) {
+var patch = function (container: Element, element: Element | Text | undefined, lastNode: VNode, nextNode: VNode) {
     var lifecycle: Function[] = []
 
     element = patchElement(
@@ -442,7 +416,6 @@ var patch = function (container: Element, element: Element | Text | undefined, l
         lastNode,
         nextNode,
         lifecycle,
-        eventProxy,
         false
     )
 
@@ -542,8 +515,58 @@ var refresh = function (sub: any, oldSub: any, dispatch: any): any {
             : oldSub
 }
 
-export function app<S>(props: { init?: S, view?: ((state: S) => VNode), subscriptions?: any, container: Element }) {
-    var state: any
+export type Action<S, P = {}> = (state: S, params: P) => S
+
+export type ActionSet<S, P> = {
+    action: Action<S, P> | undefined,
+    params: P,
+    effects?: EffectObject<S, {}>[],
+}
+
+export type EffectRunner<S, P> = (
+    props: P,
+    dispatch: Dispatch<S>
+) => void
+
+export type EffectObject<S, P> = P & {
+    effect: EffectRunner<S, P>
+}
+
+export type Effect<Props, AddProps = {}, RunnerProps = Props> = <S, P>(
+    props: { action: ActionSet<S, P & AddProps> } & Props
+) => EffectObject<S, { action: ActionSet<S, P & AddProps> } & RunnerProps>
+
+export type SubscriptionEffectRunner<S, P> = (
+    props: P,
+    dispatch: Dispatch<S>
+) => () => void
+
+export type SubscriptionObject<S, P> = P & {
+    effect: SubscriptionEffectRunner<S, P>
+}
+
+export type SubscriptionEffect<S, Props, RunnerProps = Props> = (
+    props: Props
+) => SubscriptionObject<S, RunnerProps>
+
+export type SubscriptionType<S, P> = SubscriptionObject<S, P> | boolean
+
+export type SubscriptionsResult<S> =
+    | void
+    | SubscriptionType<S, any>
+    | SubscriptionType<S, any>[]
+
+export type Dispatch<S> = <P>(action: ActionSet<S, P>, effects?: EffectObject<S, object>[]) => void
+
+export type AppProps<S> = {
+    init: Action<S>,
+    view?: ((state: S, dispatch: Dispatch<S>) => VNode),
+    subscriptions?: any,
+    container: Element
+}
+
+export function app<S>(props: AppProps<S>) {
+    var state: S
     var view = props.view
     var subs = props.subscriptions
     var container = props.container
@@ -552,7 +575,7 @@ export function app<S>(props: { init?: S, view?: ((state: S) => VNode), subscrip
     var lastSub: any[] = []
     var updateInProgress = false
 
-    var setState = function (newState: any) {
+    var setState = function (newState: S) {
         if (state !== newState) {
             state = newState
 
@@ -563,23 +586,15 @@ export function app<S>(props: { init?: S, view?: ((state: S) => VNode), subscrip
         }
     }
 
-    var dispatch = function (obj: any, data?: any) {
-        if (obj == null) {
-        } else if (typeof obj === "function") {
-            dispatch(obj(state, data))
-        } else if (isArray(obj)) {
-            if (typeof obj[0] === "function") {
-                dispatch(obj[0](state, obj[1], data))
-            } else {
-                obj[1].effect(obj[1], dispatch, setState(obj[0]))
-            }
-        } else {
-            setState(obj)
+    var dispatch: Dispatch<S> = function <P>(action: ActionSet<S, P>, effects?: any[]) {
+        if (action.action) {
+            setState(action.action(state, action.params))
         }
-    }
-
-    var eventProxy = function (event: any) {
-        dispatch(event.currentTarget.events[event.type], event)
+        if (effects) {
+            for (let e of effects) {
+                e.effect(e, dispatch)
+            }
+        }
     }
 
     var render = function () {
@@ -594,13 +609,12 @@ export function app<S>(props: { init?: S, view?: ((state: S) => VNode), subscrip
                 container,
                 element,
                 lastNode,
-                (lastNode = view(state)),
-                eventProxy
+                (lastNode = view(state, dispatch))
             )
         }
     }
 
-    dispatch(props.init)
+    dispatch({ action: props.init, params: {} })
 }
 
 export type Children = VNode | string | number | null
