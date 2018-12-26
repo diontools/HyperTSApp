@@ -1,4 +1,4 @@
-import { h, app, Action, Effect, ActionSet } from './hypertsapp'
+import { h, app, Action, Effect } from './hypertsapp'
 
 const initState = {
     value: 1,
@@ -23,21 +23,21 @@ const OnDelayed: Action<State, { startTime: string }> = (state, params) => {
 
 const Delay: Effect<{ interval: number }, { startTime: string }> = (props) => ({
     effect: (props, dispatch) => {
-        props.action.params.startTime = Date()
-        setTimeout(() => dispatch(props.action), props.interval)
+        props.params.startTime = Date()
+        setTimeout(() => dispatch(props.action, props.params), props.interval)
     },
     ...props,
 })
 
-let ef = Delay({ action: { action: OnDelayed, params: { startTime: '' } }, interval: 1000 });
+let ef = Delay({ action: OnDelayed, params: { startTime: '' }, interval: 1000 });
 
 app({
     init: () => initState,
     view: (state, dispatch) => (
         <div>
-            <button onclick={(ev: Event) => dispatch({ action: Increment, params: {}})}>increment</button>
-            <button onclick={(ev: Event) => dispatch({ action: Add, params: { amount: 10 } })}>add10</button>
-            <button onclick={(ev: Event) => dispatch({ action: undefined, params: undefined, effects: [ef] })}>add10</button>
+            <button onclick={(ev: Event) => dispatch(Increment, {})}>increment</button>
+            <button onclick={(ev: Event) => dispatch(Add, { amount: 10 })}>add10</button>
+            <button onclick={(ev: Event) => dispatch([ef])}>add10</button>
             {state.value}
         </div>
     ),

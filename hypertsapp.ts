@@ -517,12 +517,6 @@ var refresh = function (sub: any, oldSub: any, dispatch: any): any {
 
 export type Action<S, P = {}> = (state: S, params: P) => S
 
-export type ActionSet<S, P> = {
-    action: Action<S, P> | undefined,
-    params: P,
-    effects?: EffectObject<S, {}>[],
-}
-
 export type EffectRunner<S, P> = (
     props: P,
     dispatch: Dispatch<S>
@@ -533,8 +527,8 @@ export type EffectObject<S, P> = P & {
 }
 
 export type Effect<Props, AddProps = {}, RunnerProps = Props> = <S, P>(
-    props: { action: ActionSet<S, P & AddProps> } & Props
-) => EffectObject<S, { action: ActionSet<S, P & AddProps> } & RunnerProps>
+    props: { action: Action<S, P & AddProps>, params: P & AddProps } & Props
+) => EffectObject<S, { action: Action<S, P & AddProps>, params: P & AddProps } & RunnerProps>
 
 export type SubscriptionEffectRunner<S, P> = (
     props: P,
@@ -556,7 +550,10 @@ export type SubscriptionsResult<S> =
     | SubscriptionType<S, any>
     | SubscriptionType<S, any>[]
 
-export type Dispatch<S> = <P>(action: ActionSet<S, P>, effects?: EffectObject<S, object>[]) => void
+export type Dispatch<S> = {
+    <P>(action: Action<S, P>, params: P, effects?: EffectObject<S, object>[]): void
+    (effects: EffectObject<S, object>[]): void
+};
 
 export type AppProps<S> = {
     init: Action<S>,
@@ -586,9 +583,9 @@ export function app<S>(props: AppProps<S>) {
         }
     }
 
-    var dispatch: Dispatch<S> = function <P>(action: ActionSet<S, P>, effects?: any[]) {
-        if (action.action) {
-            setState(action.action(state, action.params))
+    var dispatch: Dispatch<S> = function <P>(action?: Action<S, P> | EffectObject<S, object>[], params?: P, effects?: any[]) {
+        if (action) {
+            setState(action(state, params!))
         }
         if (effects) {
             for (let e of effects) {
@@ -614,7 +611,7 @@ export function app<S>(props: AppProps<S>) {
         }
     }
 
-    dispatch({ action: props.init, params: {} })
+    dispatch(props.init, {})
 }
 
 export type Children = VNode | string | number | null
