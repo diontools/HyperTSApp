@@ -20,10 +20,9 @@ var merge = function <T1, T2>(a: T1, b: T2): T1 & T2 {
     return target
 }
 
-var usePromise = typeof Promise === "function"
-var resolved = usePromise ? Promise.resolve() : undefined
+var resolved = typeof Promise === "function" ? Promise.resolve() : undefined
 
-var defer = !usePromise
+var defer = !resolved
     ? setTimeout
     : function (cb: any) {
         return resolved!.then(cb)
