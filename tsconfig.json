@@ -6,7 +6,7 @@
         "lib": [
             "dom",
             "es2015"
-        ]
-    },
-    "compileOnSave": true
+        ],
+        "module": "commonjs"
+    }
 }
