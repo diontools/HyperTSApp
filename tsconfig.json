@@ -1,0 +1,9 @@
+{
+    "compilerOptions": {
+        "strict": true,
+        "lib": [
+            "dom",
+            "es2015"
+        ]
+    }
+}
