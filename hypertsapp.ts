@@ -416,7 +416,7 @@ var createTextVNode = function (text: string, element?: Element) {
     return createVNode(text, EMPTY_OBJECT, EMPTY_ARRAY, element, null, TEXT_NODE)
 }
 
-var recycleChild = function (element: Element) {
+var recycleChild = function (element: Element): VNode {
     return element.nodeType === TEXT_NODE
         ? createTextVNode(element.nodeValue!, element)
         : recycleElement(element)
