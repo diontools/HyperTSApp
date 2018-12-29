@@ -515,50 +515,80 @@ var refresh = function (sub: any, oldSub: any, dispatch: any): any {
             : oldSub
 }
 
-export type Action<S, P = {}> = (state: S, params: P) => S
+export type Action<S, P = {}> = (state: S, params: P) => S | [S, EffectObjectBase[]?]
 
 export type EffectRunner<S, P> = (
     props: P,
     dispatch: Dispatch<S>
 ) => void
 
-export type EffectObject<S, P> = P & {
+interface EffectObjectBase {
+    effect: EffectRunner<any, any>
+}
+
+interface GenericEffectObjectBase<S, P> extends EffectObjectBase {
     effect: EffectRunner<S, P>
 }
 
-export type Effect<Props, AddProps = {}, RunnerProps = Props> = <S, P>(
-    props: { action: Action<S, P & AddProps>, params: P & AddProps } & Props
-) => EffectObject<S, { action: Action<S, P & AddProps>, params: P & AddProps } & RunnerProps>
+export type EffectObject<S, P> = GenericEffectObjectBase<S, P> & P
 
-export type SubscriptionEffectRunner<S, P> = (
-    props: P,
-    dispatch: Dispatch<S>
-) => () => void
+export class Effect<Props, ReturnProps = {}, RunnerProps = Props> {
+    public constructor(
+        public create: <S, P>(props: { action: Action<S, P & ReturnProps>, params: P } & Props) =>
+            EffectObject<S, { action: Action<S, P & ReturnProps>, params: P } & RunnerProps>) {
+    }
 
-export type SubscriptionObject<S, P> = P & {
+    createAction<S, P>(action: Action<S, P & ReturnProps>): Action<S, P & ReturnProps> {
+        return action
+    }
+}
+
+export type SubscriptionEffectRunner<S, P> = (props: P, dispatch: Dispatch<S>) => () => void
+
+interface SubscriptionObjectBase {
+    effect: SubscriptionEffectRunner<any, any>
+}
+
+interface GenericSubscriptionObjectBase<S, P> extends SubscriptionObjectBase {
     effect: SubscriptionEffectRunner<S, P>
 }
 
-export type SubscriptionEffect<S, Props, RunnerProps = Props> = (
-    props: Props
-) => SubscriptionObject<S, RunnerProps>
+export type SubscriptionObject<S, P> = GenericSubscriptionObjectBase<S, P> & P
 
-export type SubscriptionType<S, P> = SubscriptionObject<S, P> | boolean
+export class Subscription<Props, ReturnProps = {}, RunnerProps = Props>{
+    // public constructor(
+    //     runner: <S, P>() => SubscriptionEffectRunner<S, { action: Action<S, P & ReturnProps>, params: P } & RunnerProps>) {
+    //     this.create = <S, P>(props) => ({ effect: runner(), ...props })
+    // }
 
-export type SubscriptionsResult<S> =
+    // create: <S, P>(props: { action: Action<S, P & ReturnProps>, params: P } & Props) => SubscriptionObject<S, { action: Action<S, P & ReturnProps>, params: P } & RunnerProps>
+    public constructor(
+        public create: <S, P>(props: { action: Action<S, P & ReturnProps>, params: P } & Props) =>
+            SubscriptionObject<S, { action: Action<S, P & ReturnProps>, params: P } & RunnerProps>
+    ) {
+    }
+
+    createAction<S, P>(action: Action<S, P & ReturnProps>): Action<S, P & ReturnProps> {
+        return action
+    }
+}
+
+export type SubscriptionType = SubscriptionObjectBase | boolean
+
+export type SubscriptionsResult =
     | void
-    | SubscriptionType<S, any>
-    | SubscriptionType<S, any>[]
+    | SubscriptionType
+    | SubscriptionType[]
 
 export type Dispatch<S> = {
-    <P>(action: Action<S, P>, params: P, effects?: EffectObject<S, object>[]): void
-    (effects: EffectObject<S, object>[]): void
-};
+    <P>(action: Action<S, P>, params: P): void
+    (action: Action<S, {}>): void
+}
 
 export type AppProps<S> = {
     init: Action<S>,
     view?: ((state: S, dispatch: Dispatch<S>) => VNode),
-    subscriptions?: any,
+    subscriptions?: (state: S) => SubscriptionsResult,
     container: Element
 }
 
@@ -583,14 +613,18 @@ export function app<S>(props: AppProps<S>) {
         }
     }
 
-    var dispatch: Dispatch<S> = function <P>(action?: Action<S, P> | EffectObject<S, object>[], params?: P, effects?: any[]) {
-        if (action) {
-            setState(action(state, params!))
-        }
-        if (effects) {
-            for (let e of effects) {
-                e.effect(e, dispatch)
+    var dispatch: Dispatch<S> = function <P>(action: Action<S, P>, params?: P) {
+        let result = action(state, params!)
+        if (isArray(result)) {
+            setState(result[0])
+            let effects = result[1]
+            if (effects) {
+                for (let e of effects) {
+                    e.effect(e, dispatch)
+                }
             }
+        } else {
+            setState(result)
         }
     }
 
