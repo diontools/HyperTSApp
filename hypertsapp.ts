@@ -515,8 +515,8 @@ var refresh = function (sub: any, oldSub: any, dispatch: any): any {
 
 export type Action<S, P = {}> = (state: S, params: P) => S | [S, EffectObjectBase[]?]
 
-export type EffectRunner<S, P> = (
-    props: P,
+export type EffectRunner<RunnerProps, ReturnProps> = <S, P>(
+    props: { action: Action<S, P & ReturnProps>, params: P } & RunnerProps,
     dispatch: Dispatch<S>
 ) => void
 
@@ -524,16 +524,21 @@ interface EffectObjectBase {
     effect: EffectRunner<any, any>
 }
 
-interface GenericEffectObjectBase<S, P> extends EffectObjectBase {
-    effect: EffectRunner<S, P>
+interface GenericEffectObjectBase<RunnerProps, ReturnProps> extends EffectObjectBase {
+    effect: EffectRunner<RunnerProps, ReturnProps>
 }
 
-export type EffectObject<S, P> = GenericEffectObjectBase<S, P> & P
+export type EffectObject<RunnerProps, ReturnProps> = GenericEffectObjectBase<RunnerProps, ReturnProps> & RunnerProps
 
 export class Effect<Props, ReturnProps = {}, RunnerProps = Props> {
     public constructor(
-        public create: <S, P>(props: { action: Action<S, P & ReturnProps>, params: P } & Props) =>
-            EffectObject<S, { action: Action<S, P & ReturnProps>, params: P } & RunnerProps>) {
+        private runner: EffectRunner<Props, ReturnProps>,
+        private creator: <S, P>(props: { action: Action<S, P & ReturnProps>, params: P } & Props, runner: EffectRunner<Props, ReturnProps>) =>
+            EffectObject<RunnerProps, ReturnProps>) {
+    }
+
+    create<S, P>(props: { action: Action<S, P & ReturnProps>, params: P } & Props) {
+        return this.creator(props, this.runner)
     }
 
     createAction<S, P>(action: Action<S, P & ReturnProps>): Action<S, P & ReturnProps> {
@@ -541,7 +546,10 @@ export class Effect<Props, ReturnProps = {}, RunnerProps = Props> {
     }
 }
 
-export type SubscriptionRunner<RunnerProps, ReturnProps> = <S, P>(props: { action: Action<S, P & ReturnProps>, params: P } & RunnerProps, dispatch: Dispatch<S>) => () => void
+export type SubscriptionRunner<RunnerProps, ReturnProps> = <S, P>(
+    props: { action: Action<S, P & ReturnProps>, params: P } & RunnerProps,
+    dispatch: Dispatch<S>
+) => () => void
 
 interface SubscriptionObjectBase {
     effect: SubscriptionRunner<any, any>

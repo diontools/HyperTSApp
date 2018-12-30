@@ -19,14 +19,14 @@ const Add: Action<State, { amount: number }> = (state, params) => ({
     value: state.value + params.amount,
 })
 
-const Delay = new Effect<{ interval: number }, { startTime: string }>((props) => ({
-    effect: (props, dispatch) => {
-        const params = {
-            ...props.params,
-            startTime: Date()
-        }
-        setTimeout(() => dispatch(props.action, params), props.interval)
-    },
+const Delay = new Effect<{ interval: number }, { startTime: string }>((props, dispatch) => {
+    const params = {
+        ...props.params,
+        startTime: Date()
+    }
+    setTimeout(() => dispatch(props.action, params), props.interval)
+}, (props, runner) => ({
+    effect: runner,
     ...props,
 }))
 
@@ -69,14 +69,16 @@ const ToggleTimer: Action<State> = state => ({
 
 
 app({
-    init: () => initState,
+    init: () => [initState, [Delay.create({ action: OnDelayed, params: { amount: 10 }, interval: 1000 })]],
     view: (state, dispatch) => (
         <div>
             <button onclick={(ev: Event) => dispatch(Increment)}>increment</button>
             <button onclick={(ev: Event) => dispatch(Add, { amount: 10 })}>add10</button>
-            <button onclick={(ev: Event) => dispatch(DelayAdd, { interval: 1000, amount: 50 })}>add10</button>
+            <button onclick={(ev: Event) => dispatch(DelayAdd, { interval: 1000, amount: 50 })}>delayAdd</button>
             <button onclick={(ev: Event) => dispatch(ToggleTimer)}>auto:{state.auto ? 'true' : 'false'}</button>
-            {state.value} text:{state.text} count:{state.count}
+            <p>value: {state.value}</p>
+            <p>text: {state.text}</p>
+            <p>count: {state.count}</p>
         </div>
     ),
     subscriptions: state => state.auto && Timer.create({ action: OnTimer, params: {}, interval: 500 }),
