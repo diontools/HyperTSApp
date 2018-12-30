@@ -468,13 +468,6 @@ var isSameValue = function (a: any, b: any) {
     return true
 }
 
-var isSameAction = function (a: any, b: any) {
-    return (
-        typeof a === typeof b &&
-        (isArray(a) && a[0] === b[0] && isSameValue(a[1], b[1]))
-    )
-}
-
 var restart = function (sub: any, oldSub: any, dispatch: any) {
     for (var k in merge(sub, oldSub)) {
         if (k !== "cancel" && sub[k] !== oldSub[k] && !isSameValue(sub[k], oldSub[k])) {
