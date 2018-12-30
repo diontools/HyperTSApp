@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "csstype": "^2.6.0",
     "parcel": "^1.11.0",
     "typescript": "^3.2.2"
   }

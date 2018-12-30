@@ -45,6 +45,13 @@ var updateProperty = function (
                 element[name][i] = style
             }
         }
+    } else if (name[0] === 'o' && name[1] === 'n') {
+        name = name.slice(2).toLowerCase()
+        if (nextValue == null) {
+          element.removeEventListener(name, lastValue)
+        } else if (lastValue == null) {
+          element.addEventListener(name, nextValue)
+        }
     } else {
         var nullOrFalse = nextValue == null || nextValue === false
 
@@ -662,11 +669,11 @@ export interface VNode<Props = {}> {
     type: VNodeType
 }
 
-declare global {
-    namespace JSX {
-        interface Element extends VNode<any> { }
-        interface IntrinsicElements {
-            [elemName: string]: any
-        }
-    }
-}
+// declare global {
+//     namespace JSX {
+//         interface Element extends VNode<any> { }
+//         interface IntrinsicElements {
+//             [elemName: string]: any
+//         }
+//     }
+// }
