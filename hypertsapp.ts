@@ -477,9 +477,7 @@ var isSameAction = function (a: any, b: any) {
 
 var restart = function (sub: any, oldSub: any, dispatch: any) {
     for (var k in merge(sub, oldSub)) {
-        if (k === "cancel") {
-        } else if (sub[k] === oldSub[k] || isSameAction(sub[k], oldSub[k])) {
-        } else {
+        if (k !== "cancel" && sub[k] !== oldSub[k] && !isSameValue(sub[k], oldSub[k])) {
             cancel(oldSub)
             return start(sub, dispatch)
         }
@@ -543,29 +541,27 @@ export class Effect<Props, ReturnProps = {}, RunnerProps = Props> {
     }
 }
 
-export type SubscriptionEffectRunner<S, P> = (props: P, dispatch: Dispatch<S>) => () => void
+export type SubscriptionRunner<RunnerProps, ReturnProps> = <S, P>(props: { action: Action<S, P & ReturnProps>, params: P } & RunnerProps, dispatch: Dispatch<S>) => () => void
 
 interface SubscriptionObjectBase {
-    effect: SubscriptionEffectRunner<any, any>
+    effect: SubscriptionRunner<any, any>
 }
 
-interface GenericSubscriptionObjectBase<S, P> extends SubscriptionObjectBase {
-    effect: SubscriptionEffectRunner<S, P>
+interface GenericSubscriptionObjectBase<RunnerProps, ReturnProps> extends SubscriptionObjectBase {
+    effect: SubscriptionRunner<RunnerProps, ReturnProps>
 }
 
-export type SubscriptionObject<S, P> = GenericSubscriptionObjectBase<S, P> & P
+export type SubscriptionObject<RunnerProps, ReturnProps> = GenericSubscriptionObjectBase<RunnerProps, ReturnProps> & RunnerProps
 
 export class Subscription<Props, ReturnProps = {}, RunnerProps = Props>{
-    // public constructor(
-    //     runner: <S, P>() => SubscriptionEffectRunner<S, { action: Action<S, P & ReturnProps>, params: P } & RunnerProps>) {
-    //     this.create = <S, P>(props) => ({ effect: runner(), ...props })
-    // }
-
-    // create: <S, P>(props: { action: Action<S, P & ReturnProps>, params: P } & Props) => SubscriptionObject<S, { action: Action<S, P & ReturnProps>, params: P } & RunnerProps>
     public constructor(
-        public create: <S, P>(props: { action: Action<S, P & ReturnProps>, params: P } & Props) =>
-            SubscriptionObject<S, { action: Action<S, P & ReturnProps>, params: P } & RunnerProps>
-    ) {
+        private runner: SubscriptionRunner<Props, ReturnProps>,
+        private creator: <S, P>(props: { action: Action<S, P & ReturnProps>, params: P } & Props, runner: SubscriptionRunner<Props, ReturnProps>) =>
+            SubscriptionObject<RunnerProps, ReturnProps>) {
+    }
+
+    create<S, P>(props: { action: Action<S, P & ReturnProps>, params: P } & Props) {
+        return this.creator(props, this.runner)
     }
 
     createAction<S, P>(action: Action<S, P & ReturnProps>): Action<S, P & ReturnProps> {

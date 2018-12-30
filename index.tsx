@@ -1,4 +1,4 @@
-import { h, app, Action, Effect, Subscription, SubscriptionEffectRunner } from './hypertsapp'
+import { h, app, Action, Effect, Subscription } from './hypertsapp'
 
 const initState = {
     value: 1,
@@ -41,17 +41,18 @@ const DelayAdd: Action<State, { interval: number, amount: number }> = (state, pa
     [Delay.create({ action: OnDelayed, params: { amount: params.amount }, interval: params.interval })]
 ]
 
-const Timer = new Subscription<{ interval: number }, { count: number }>(props => ({
-    effect: (props, dispatch) => {
-        let count = 0;
-        const id = setInterval(() => {
-            dispatch(props.action, {
-                ...props.params,
-                count: ++count,
-            })
-        }, props.interval)
-        return () => clearInterval(id)
-    },
+
+const Timer = new Subscription<{ interval: number }, { count: number }>((props, dispatch) => {
+    let count = 0;
+    const id = setInterval(() => {
+        dispatch(props.action, {
+            ...props.params,
+            count: ++count,
+        })
+    }, props.interval)
+    return () => clearInterval(id)
+}, (props, runner) => ({
+    effect: runner,
     ...props,
 }))
 
@@ -60,8 +61,6 @@ const OnTimer = Timer.createAction<State, {}>((state, params) => ({
     value: state.value + 1,
     count: params.count,
 }))
-
-const autoIncrementTimer = Timer.create({ action: OnTimer, params: {}, interval: 500 })
 
 const ToggleTimer: Action<State> = state => ({
     ...state,
@@ -80,6 +79,6 @@ app({
             {state.value} text:{state.text} count:{state.count}
         </div>
     ),
-    subscriptions: state => state.auto && autoIncrementTimer,
+    subscriptions: state => state.auto && Timer.create({ action: OnTimer, params: {}, interval: 500 }),
     container: document.body,
 })
