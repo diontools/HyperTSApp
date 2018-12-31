@@ -22,11 +22,8 @@ const Add: Action<State, { amount: number }> = (state, params) => ({
 
 
 const Delay = new Effect<{ interval: number }, { startTime: string }>((props, dispatch) => {
-    const params = {
-        ...props.params,
-        startTime: Date()
-    }
-    setTimeout(() => dispatch(props.action, params), props.interval)
+    const startTime = Date()
+    setTimeout(() => dispatch(props.action, { ...props.params, startTime }), props.interval)
 }, (props, runner) => ({
     effect: runner,
     ...props,
@@ -44,21 +41,19 @@ const DelayAdd: Action<State, { interval: number, amount: number }> = (state, pa
 ]
 
 
-const Timer = new Subscription<{ interval: number }, { count: number }>((props, dispatch) => {
+const Tick = new Subscription<{ interval: number }, { count: number }>((props, dispatch) => {
     let count = 0;
-    const id = setInterval(() => {
-        dispatch(props.action, {
-            ...props.params,
-            count: ++count,
-        })
-    }, props.interval)
+    const id = setInterval(
+        () => dispatch(props.action, { ...props.params, count: ++count, }),
+        props.interval
+    )
     return () => clearInterval(id)
 }, (props, runner) => ({
     effect: runner,
     ...props,
 }))
 
-const OnTimer = Timer.createAction<State, {}>((state, params) => ({
+const OnTimer = Tick.createAction<State, {}>((state, params) => ({
     ...state,
     value: state.value + 1,
     count: params.count,
@@ -84,10 +79,10 @@ app({
             <p>text: {state.text}</p>
             <p>count: {state.count}</p>
             <p>
-                input: <input type="text" onInput={ev => dispatch(Input, ev.currentTarget.value) } /> → {state.input}
+                input: <input type="text" value={state.input} onInput={ev => dispatch(Input, ev.currentTarget.value) } /> → {state.input}
             </p>
         </div>
     ),
-    subscriptions: state => state.auto && Timer.create({ action: OnTimer, params: {}, interval: 500 }),
+    subscriptions: state => state.auto && Tick.create({ action: OnTimer, params: {}, interval: 500 }),
     container: document.body,
 })

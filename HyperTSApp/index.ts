@@ -33,6 +33,7 @@ var updateProperty = function (
     name: string,
     lastValue: any,
     nextValue: any,
+    eventProxy: Function,
     isSvg: boolean
 ) {
     if (name === "key") {
@@ -47,10 +48,14 @@ var updateProperty = function (
         }
     } else if (name[0] === 'o' && name[1] === 'n') {
         name = name.slice(2).toLowerCase()
+
+        if (!element.events) element.events = {}
+        element.events[name] = nextValue
+
         if (nextValue == null) {
-          element.removeEventListener(name, lastValue)
+          element.removeEventListener(name, eventProxy)
         } else if (lastValue == null) {
-          element.addEventListener(name, nextValue)
+          element.addEventListener(name, eventProxy)
         }
     } else {
         var nullOrFalse = nextValue == null || nextValue === false
@@ -86,7 +91,7 @@ var updateProperty = function (
     }
 }
 
-var createElement = function (node: VNode, lifecycle: Function[], isSvg: boolean) {
+var createElement = function (node: VNode, lifecycle: Function[], eventProxy: Function, isSvg: boolean) {
     var element =
         node.type === TEXT_NODE
             ? document.createTextNode(node.name)
@@ -103,12 +108,12 @@ var createElement = function (node: VNode, lifecycle: Function[], isSvg: boolean
 
     for (var i = 0, length = node.children.length; i < length; i++) {
         element.appendChild(
-            createElement(node.children[i], lifecycle, isSvg)
+            createElement(node.children[i], lifecycle, eventProxy, isSvg)
         )
     }
 
     for (var name in props) {
-        updateProperty(element, name, null, props[name], isSvg)
+        updateProperty(element, name, null, props[name], eventProxy, isSvg)
     }
 
     return (node.element = element)
@@ -119,6 +124,7 @@ var updateElement = function (
     lastProps: any,
     nextProps: any,
     lifecycle: Function[],
+    eventProxy: Function,
     isSvg: any,
     isRecycled: any
 ) {
@@ -133,6 +139,7 @@ var updateElement = function (
                 name,
                 lastProps[name],
                 nextProps[name],
+                eventProxy,
                 isSvg
             )
         }
@@ -196,6 +203,7 @@ var patchElement = function (
     lastNode: VNode | null,
     nextNode: VNode,
     lifecycle: Function[],
+    eventProxy: Function,
     isSvg: boolean
 ) {
     if (nextNode === lastNode) {
@@ -209,7 +217,7 @@ var patchElement = function (
         }
     } else if (lastNode == null || lastNode.name !== nextNode.name) {
         var newElement = parent!.insertBefore(
-            createElement(nextNode, lifecycle, isSvg),
+            createElement(nextNode, lifecycle, eventProxy, isSvg),
             element!
         )
 
@@ -222,6 +230,7 @@ var patchElement = function (
             lastNode.props,
             nextNode.props,
             lifecycle,
+            eventProxy,
             (isSvg = isSvg || nextNode.name === "svg"),
             lastNode.type === RECYCLED_NODE
         )
@@ -251,6 +260,7 @@ var patchElement = function (
                 lastChildren[lastChStart],
                 nextChildren[nextChStart],
                 lifecycle,
+                eventProxy,
                 isSvg
             )
 
@@ -270,6 +280,7 @@ var patchElement = function (
                 lastChildren[lastChEnd],
                 nextChildren[nextChEnd],
                 lifecycle,
+                eventProxy,
                 isSvg
             )
 
@@ -283,6 +294,7 @@ var patchElement = function (
                     createElement(
                         nextChildren[nextChStart++],
                         lifecycle,
+                        eventProxy,
                         isSvg
                     ),
                     (childNode = lastChildren[lastChStart]) && childNode.element!
@@ -319,6 +331,7 @@ var patchElement = function (
                             childNode,
                             nextChildren[nextChStart],
                             lifecycle,
+                            eventProxy,
                             isSvg
                         )
                         nextChStart++
@@ -332,6 +345,7 @@ var patchElement = function (
                             childNode,
                             nextChildren[nextChStart],
                             lifecycle,
+                            eventProxy,
                             isSvg
                         )
                         nextKeyed[nextKey] = true
@@ -347,6 +361,7 @@ var patchElement = function (
                                 savedNode,
                                 nextChildren[nextChStart],
                                 lifecycle,
+                                eventProxy,
                                 isSvg
                             )
                             nextKeyed[nextKey] = true
@@ -357,6 +372,7 @@ var patchElement = function (
                                 null,
                                 nextChildren[nextChStart],
                                 lifecycle,
+                                eventProxy,
                                 isSvg
                             )
                         }
@@ -414,7 +430,7 @@ var recycleElement = function (element: Element) {
     )
 }
 
-var patch = function (container: Element, element: Element | Text | undefined, lastNode: VNode, nextNode: VNode) {
+var patch = function (container: Element, element: Element | Text | undefined, lastNode: VNode, nextNode: VNode, eventProxy: Function) {
     var lifecycle: Function[] = []
 
     element = patchElement(
@@ -423,6 +439,7 @@ var patch = function (container: Element, element: Element | Text | undefined, l
         lastNode,
         nextNode,
         lifecycle,
+        eventProxy,
         false
     )
 
@@ -632,6 +649,10 @@ export function app<S>(props: AppProps<S>) {
         }
     }
 
+    var eventProxy = function(event: any) {
+        event.currentTarget.events[event.type](event)
+    }
+
     var render = function () {
         updateInProgress = false
 
@@ -644,7 +665,8 @@ export function app<S>(props: AppProps<S>) {
                 container,
                 element,
                 lastNode,
-                (lastNode = view(state, dispatch))
+                (lastNode = view(state, dispatch)),
+                eventProxy
             )
         }
     }
