@@ -53,7 +53,7 @@ const Tick = new Subscription<{ interval: number }, { count: number }>((props, d
     ...props,
 }))
 
-const OnTimer = Tick.createAction<State, {}>((state, params) => ({
+const OnTimer = Tick.createAction<State>((state, params) => ({
     ...state,
     value: state.value + 1,
     count: params.count,
@@ -83,6 +83,6 @@ app({
             </p>
         </div>
     ),
-    subscriptions: state => state.auto && Tick.create({ action: OnTimer, params: {}, interval: 500 }),
+    subscriptions: state => state.auto && Tick.create({ action: OnTimer, params: undefined, interval: 500 }),
     container: document.body,
 })

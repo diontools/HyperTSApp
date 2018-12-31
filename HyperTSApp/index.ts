@@ -530,7 +530,7 @@ var refresh = function (sub: any, oldSub: any, dispatch: any): any {
             : oldSub
 }
 
-export type Action<S, P = {}> = (state: S, params: P) => S | [S, EffectObjectBase[]?]
+export type Action<S, P = undefined> = (state: S, params: P) => S | [S, EffectObjectBase[]?]
 
 export type EffectRunner<RunnerProps, ReturnProps> = <S, P>(
     props: { action: Action<S, P & ReturnProps>, params: P } & RunnerProps,
@@ -589,7 +589,7 @@ export class Subscription<Props, ReturnProps = {}, RunnerProps = Props>{
         return this.creator(props, this.runner)
     }
 
-    createAction<S, P>(action: Action<S, P & ReturnProps>): Action<S, P & ReturnProps> {
+    createAction<S, P = undefined>(action: Action<S, P & ReturnProps>): Action<S, P & ReturnProps> {
         return action
     }
 }
@@ -603,7 +603,7 @@ export type SubscriptionsResult =
 
 export type Dispatch<S> = {
     <P>(action: Action<S, P>, params: P): void
-    (action: Action<S, {}>): void
+    (action: Action<S, undefined>): void
 }
 
 export type AppProps<S> = {
@@ -671,7 +671,7 @@ export function app<S>(props: AppProps<S>) {
         }
     }
 
-    dispatch(props.init, {})
+    dispatch(props.init)
 }
 
 export type Children = VNode | string | number | null
