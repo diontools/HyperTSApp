@@ -530,7 +530,8 @@ var refresh = function (sub: any, oldSub: any, dispatch: any): any {
             : oldSub
 }
 
-export type Action<S, P = undefined> = (state: S, params: P) => S | [S, EffectObjectBase[]?]
+export type ActionResult<S> = S | [S, EffectObjectBase[]?]
+export type Action<S, P = undefined> = (state: S, params: P) => ActionResult<S>
 
 export type EffectRunner<RunnerProps, ReturnProps> = <S, P>(
     props: { action: Action<S, P & ReturnProps>, params: P } & RunnerProps,
