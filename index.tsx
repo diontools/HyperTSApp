@@ -1,14 +1,7 @@
-import { h, app, Action, Effect, Subscription } from './HyperTSApp'
-
-const initState = {
-    value: 1,
-    text: '',
-    auto: false,
-    count: 0,
-    input: '',
-}
-
-type State = typeof initState;
+import { h, app, Action, Effect, Subscription, createPartialDispatch } from './HyperTSApp'
+import { State, initState } from './states'
+import { Delay, Tick } from './effects';
+import * as part from './part'
 
 const Increment: Action<State> = state => ({
     ...state,
@@ -21,13 +14,6 @@ const Add: Action<State, { amount: number }> = (state, params) => ({
 })
 
 
-const Delay = new Effect<{ interval: number }, { startTime: string }>((props, dispatch) => {
-    const startTime = Date()
-    setTimeout(() => dispatch(props.action, { ...props.params, startTime }), props.interval)
-}, (props, runner) => ({
-    effect: runner,
-    ...props,
-}))
 
 const OnDelayed = Delay.createAction<State, { amount: number }>((state, params) => ({
     ...state,
@@ -40,18 +26,6 @@ const DelayAdd: Action<State, { interval: number, amount: number }> = (state, pa
     [Delay.create({ action: OnDelayed, params: { amount: params.amount }, interval: params.interval })]
 ]
 
-
-const Tick = new Subscription<{ interval: number }, { count: number }>((props, dispatch) => {
-    let count = 0;
-    const id = setInterval(
-        () => dispatch(props.action, { ...props.params, count: ++count, }),
-        props.interval
-    )
-    return () => clearInterval(id)
-}, (props, runner) => ({
-    effect: runner,
-    ...props,
-}))
 
 const OnTimer = Tick.createAction<State>((state, params) => ({
     ...state,
@@ -80,6 +54,9 @@ app({
             <p>count: {state.count}</p>
             <p>
                 input: <input type="text" value={state.input} onInput={ev => dispatch(Input, ev.currentTarget.value) } /> → {state.input}
+            </p>
+            <p>
+                {part.view(state, state.part, createPartialDispatch(dispatch, 'part'))}
             </p>
         </div>
     ),

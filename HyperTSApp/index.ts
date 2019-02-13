@@ -607,9 +607,40 @@ export type Dispatch<S> = {
     (action: Action<S, undefined>): void
 }
 
+export type View<S> = (state: S, dispatch: Dispatch<S>) => VNode
+
+export type PartialDispatch<S, N extends keyof S> = {
+    <P>(root: S, action: PartialAction<S, N, P>, params: P): void
+    (root: S, action: PartialAction<S, N, undefined>): void
+}
+export type PartialView<S, N extends keyof S> = (root: S, state: S[N], dispatch: PartialDispatch<S, N>) => VNode
+export type PartialAction<S, N extends keyof S, P> = (state: S[N], params: P) => ActionResult<S[N]>
+
+function mergeResult<S, N extends keyof S>(root: S, name: N, result: ActionResult<S[N]>): ActionResult<S> {
+    if (isArray(result)) {
+        return [mergeState(root, name, result[0]), result[1]]
+    } else {
+        return mergeState(root, name, result)
+    }
+}
+
+function mergeState<S, N extends keyof S>(root: S, name: N, result: S[N]): S {
+    return {
+        ...root,
+        [name]: result,
+    };
+}
+
+export function createPartialDispatch<S, N extends keyof S>(dispatch: Dispatch<S>, name: N): PartialDispatch<S, N> {
+    return function <P>(root: S, action: PartialAction<S, N, P>, params?: P) {
+        const a: Action<S, P | undefined> = (s, p) => mergeResult(root, name, action(s[name], p!))
+        dispatch(a, params)
+    }
+}
+
 export type AppProps<S> = {
     init: Action<S>,
-    view?: ((state: S, dispatch: Dispatch<S>) => VNode),
+    view?: View<S>,
     subscriptions?: (state: S) => SubscriptionsResult,
     container: Element
 }
