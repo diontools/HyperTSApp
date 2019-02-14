@@ -645,7 +645,11 @@ export type AppProps<S> = {
     container: Element
 }
 
-export function app<S>(props: AppProps<S>) {
+export type Application<S> = {
+    dispatch: Dispatch<S>,
+}
+
+export function app<S>(props: AppProps<S>): Application<S> {
     var state: S
     var view = props.view
     var subs = props.subscriptions
@@ -704,6 +708,10 @@ export function app<S>(props: AppProps<S>) {
     }
 
     dispatch(props.init)
+
+    return {
+        dispatch,
+    }
 }
 
 export type Children = VNode | string | number | null
